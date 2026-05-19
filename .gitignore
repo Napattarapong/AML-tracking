@@ -27,6 +27,9 @@ hs_err_pid*
 .vscode/
 .env
 
+# Python virtual environment
+aml_env/
+
 # Temporal files
 tmp/
 __pycache__/

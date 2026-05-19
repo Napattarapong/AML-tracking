@@ -1,3 +1,6 @@
+import fractions
+import math
+fractions.gcd = math.gcd
 """
 Generate a base transaction graph used in the simulator
 """
