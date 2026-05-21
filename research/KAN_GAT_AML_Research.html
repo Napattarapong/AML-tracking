@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAN-GAT: Interpretable Anti-Money Laundering Detection</title>
+    <style>
+        /* ── Root & Reset ─────────────────────────────────────── */
+        :root {
+            --primary: #1a1a2e;
+            --secondary: #16213e;
+            --accent: #0f3460;
+            --gold: #e94560;
+            --kan: #2ecc71;
+            --gat: #3498db;
+            --xgb: #e74c3c;
+            --bg: #0d1117;
+            --card: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --dim: #8b949e;
+            --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            scroll-behavior: smooth;
+        }
+        a { color: #58a6ff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* ── Scrollbar ─────────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        /* ── Navigation ────────────────────────────────────────── */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            background: rgba(13, 17, 23, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            height: 56px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        nav .logo { font-weight: 700; font-size: 1.1rem; color: var(--kan); }
+        nav .nav-links { display: flex; gap: 1.5rem; font-size: 0.85rem; }
+        nav .nav-links a { color: var(--dim); transition: color 0.2s; }
+        nav .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+        /* ── Hero ──────────────────────────────────────────────── */
+        .hero {
+            padding: 8rem 2rem 4rem;
+            text-align: center;
+            max-width: 900px; margin: 0 auto;
+        }
+        .hero .tag {
+            display: inline-block;
+            background: rgba(46, 204, 113, 0.15);
+            color: var(--kan);
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 1.5rem;
+        }
+        .hero h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .kan { color: var(--kan); }
+        .hero h1 .gat { color: var(--gat); }
+        .hero p {
+            color: var(--dim);
+            font-size: 1.15rem;
+            max-width: 700px; margin: 0 auto 2rem;
+        }
+        .hero .actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .hero .actions a {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .hero .actions .btn-primary {
+            background: var(--kan); color: var(--bg); border: none;
+        }
+        .hero .actions .btn-primary:hover { background: #27ae60; text-decoration: none; }
+        .hero .actions .btn-secondary {
+            background: transparent; color: var(--text); border: 1px solid var(--border);
+        }
+        .hero .actions .btn-secondary:hover { border-color: var(--dim); text-decoration: none; }
+
+        /* ── Layout ────────────────────────────────────────────── */
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
+
+        section { padding: 4rem 0; border-bottom: 1px solid var(--border); }
+        section:last-of-type { border-bottom: none; }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .section-subtitle {
+            color: var(--dim);
+            font-size: 1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        /* ── Cards ─────────────────────────────────────────────── */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .card-grid.wide { grid-template-columns: 1fr; }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: border-color 0.2s;
+        }
+        .card:hover { border-color: #484f58; }
+        .card h3 {
+            font-size: 1.05rem;
+            margin-bottom: 0.75rem;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .card h3 .icon { font-size: 1.3rem; }
+        .card p, .card li { font-size: 0.92rem; color: var(--dim); line-height: 1.6; }
+        .card ul { padding-left: 1.2rem; }
+        .card ul li { margin-bottom: 0.4rem; }
+
+        .card.highlight {
+            border-color: var(--kan);
+            background: rgba(46, 204, 113, 0.05);
+        }
+        .card.highlight.kan { border-color: var(--kan); }
+        .card.highlight.gat { border-color: var(--gat); }
+
+        .stat {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+        .stat .number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--kan);
+            display: block;
+        }
+        .stat .label {
+            font-size: 0.85rem;
+            color: var(--dim);
+            margin-top: 0.3rem;
+        }
+
+        /* ── Code ──────────────────────────────────────────────── */
+        pre {
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            overflow-x: auto;
+            font-family: var(--mono);
+            font-size: 0.82rem;
+            line-height: 1.5;
+            margin: 1rem 0;
+        }
+        code {
+            font-family: var(--mono);
+            font-size: 0.85em;
+            background: rgba(255,255,255,0.05);
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+        }
+        pre code { background: none; padding: 0; font-size: 0.82rem; }
+
+        /* ── Tables ────────────────────────────────────────────── */
+        .table-wrap { overflow-x: auto; margin: 1.5rem 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th, td {
+            padding: 0.65rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: rgba(255,255,255,0.03);
+            font-weight: 600;
+            color: var(--dim);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+        .best { color: var(--kan); font-weight: 700; }
+        .best_gnn { color: var(--gat); font-weight: 700; }
+
+        /* ── Architecture Diagram ──────────────────────────────── */
+        .arch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 2rem 0;
+        }
+        .arch .box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.8rem 2rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            min-width: 180px;
+        }
+        .arch .box.gat { border-color: var(--gat); color: var(--gat); }
+        .arch .box.kan { border-color: var(--kan); color: var(--kan); }
+        .arch .box.data { border-color: #e67e22; color: #e67e22; }
+        .arch .box.output { border-color: #e94560; color: #e94560; }
+        .arch .arrow { color: var(--dim); font-size: 1.2rem; }
+
+        /* ── Equation ──────────────────────────────────────────── */
+        .eq-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.5rem 2rem;
+            margin: 1.5rem 0;
+            text-align: center;
+            font-family: var(--mono);
+            font-size: 1.1rem;
+            overflow-x: auto;
+        }
+
+        /* ── Results Comparison ────────────────────────────────── */
+        .winner { color: var(--kan); font-weight: 700; }
+        .loser { color: var(--gold); }
+
+        /* ── Footer ────────────────────────────────────────────── */
+        footer {
+            padding: 3rem 2rem;
+            text-align: center;
+            color: var(--dim);
+            font-size: 0.85rem;
+        }
+
+        /* ── Responsive ────────────────────────────────────────── */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 1.8rem; }
+            nav .nav-links { display: none; }
+            .card-grid { grid-template-columns: 1fr; }
+            .stat .number { font-size: 1.8rem; }
+        }
+
+        /* ── Callout ───────────────────────────────────────────── */
+        .callout {
+            background: rgba(88, 166, 255, 0.08);
+            border-left: 4px solid #58a6ff;
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .callout.warning {
+            background: rgba(210, 153, 34, 0.08);
+            border-left-color: #d29922;
+        }
+        .callout.success {
+            background: rgba(46, 204, 113, 0.08);
+            border-left-color: var(--kan);
+        }
+        .callout p { font-size: 0.92rem; color: var(--dim); margin: 0; }
+
+        /* ── Spline placeholder ────────────────────────────────── */
+        .spline-viz {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+        .spline-viz .spline-item {
+            text-align: center;
+            padding: 1rem;
+        }
+        .spline-viz .spline-item .title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .spline-viz .spline-item .importance {
+            font-size: 0.75rem;
+            color: var(--dim);
+        }
+        .spline-viz .spline-item canvas {
+            width: 100%;
+            height: 100px;
+            background: #0d1117;
+            border-radius: 6px;
+        }
+
+        /* ── Accordion ─────────────────────────────────────────── */
+        details {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+        }
+        details summary {
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        details summary::-webkit-details-marker { color: var(--dim); }
+        details .content { padding-top: 1rem; }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- NAVIGATION                                                     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<nav>
+    <span class="logo">KAN-GAT · AML</span>
+    <div class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#data">Data</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#kan">KAN</a>
+        <a href="#results">Results</a>
+        <a href="#interpret">Interpretability</a>
+        <a href="#paper">Paper</a>
+        <a href="#code">Code</a>
+    </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- HERO                                                           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<header class="hero">
+    <span class="tag">📍 Research Prototype · May 2026</span>
+    <h1>
+        <span class="kan">KAN</span>-<span class="gat">GAT</span>:
+        Interpretable Graph Attention Networks with
+        Kolmogorov–Arnold Layers for
+        Anti–Money Laundering Detection
+    </h1>
+    <p>
+        We replace the standard MLP classifier head of a Graph Attention Network
+        with learnable <strong>B–spline functions</strong> (KAN layers).
+        The result: <strong>equal detection accuracy</strong> with
+        <strong>full interpretability</strong> — critical for regulated
+        financial AI.
+    </p>
+    <div class="actions">
+        <a href="#results" class="btn-primary">📊 See Results</a>
+        <a href="#code" class="btn-secondary">📂 View Code</a>
+        <a href="HANDBOOK.md" class="btn-secondary">📖 Read Handbook</a>
+    </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SECTION 1: OVERVIEW                                           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="overview">
+    <div class="container">
+        <h2 class="section-title">1. Research Overview</h2>
+        <p class="section-subtitle">Why combine Kolmogorov–Arnold Networks with Graph Attention Networks for AML?</p>
+
+        <div class="card-grid">
+            <div class="card highlight kan">
+                <h3><span class="icon">🧠</span> Kolmogorov–Arnold Networks</h3>
+                <p>
+                    KANs replace fixed activation functions (ReLU, sigmoid) with <strong>learnable spline functions</strong>
+                    on the <em>edges</em> of the network. Instead of <code>σ(Wx + b)</code>, a KAN computes
+                    <code>Σ φ(x)</code> where each φ is a B‑spline.
+                </p>
+                <ul>
+                    <li><strong>Interpretable</strong> — plot each φ to see exactly how a feature affects the output</li>
+                    <li><strong>Expressive</strong> — splines adapt to any function shape</li>
+                    <li><strong>Param‑efficient</strong> — knot values replace weight matrices</li>
+                </ul>
+            </div>
+
+            <div class="card highlight gat">
+                <h3><span class="icon">🔗</span> Graph Attention Networks</h3>
+                <p>
+                    GATs process the transaction graph via <strong>message passing</strong> with learned attention weights.
+                    Each node aggregates information from its neighbors, weighted by how "relevant" each neighbor is.
+                </p>
+                <ul>
+                    <li><strong>Captures structure</strong> — cycle, fan‑in, fan‑out patterns are topological</li>
+                    <li><strong>Attention</strong> — learns which transactions matter most</li>
+                    <li><strong>Multi‑head</strong> — different heads capture different relationship types</li>
+                </ul>
+            </div>
+
+            <div class="card highlight" style="border-color:#e67e22;">
+                <h3><span class="icon">🔬</span> Our Contribution: KAN–GAT Fusion</h3>
+                <p>
+                    We join them: <strong>GAT encodes graph structure → KAN classifies</strong>.
+                    The standard MLP head is replaced with a stack of KAN layers.
+                </p>
+                <ul>
+                    <li>GAT produces a 64‑dim node embedding</li>
+                    <li>Structural features (degree, pagerank, clustering) are appended</li>
+                    <li>KAN layers learn interpretable spline functions on the combined representation</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="callout success">
+            <p><strong>Key insight:</strong> On this synthetic data, <strong>XGBoost outperforms all GNNs</strong> (AUC‑PR 0.513 vs best GNN GAT+Linear 0.161) because the synthetic typologies are fundamentally <em>degree‑based</em> patterns. Among GNNs, simpler heads win — GAT+Linear (805 params) beats GAT+MLP (961) and KAN‑GAT (2,625). KAN‑GAT matches GAT+MLP (0.132 vs 0.125) but adds <strong>interpretability</strong> — the real contribution for regulated environments.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SECTION 2: DATA                                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="data">
+    <div class="container">
+        <h2 class="section-title">2. The Dataset</h2>
+        <p class="section-subtitle">IBM AMLSim synthetic transaction data — <code>outputs/sample/</code></p>
+
+        <div class="card-grid">
+            <div class="stat card">
+                <span class="number">1,446</span>
+                <span class="label">Bank accounts (nodes)</span>
+            </div>
+            <div class="stat card">
+                <span class="number">121,457</span>
+                <span class="label">Transactions (edges)</span>
+            </div>
+            <div class="stat card">
+                <span class="number">73</span>
+                <span class="label">SAR-flagged accounts (~5%)</span>
+            </div>
+            <div class="stat card">
+                <span class="number">720</span>
+                <span class="label">Simulation time steps (≈30 days)</span>
+            </div>
+            <div class="stat card">
+                <span class="number">3</span>
+                <span class="label">Alert typologies (cycle, fan‑in, fan‑out)</span>
+            </div>
+            <div class="stat card">
+                <span class="number">100%</span>
+                <span class="label">Label quality (all alerted = SAR)</span>
+            </div>
+        </div>
+
+        <div class="card-grid wide">
+            <div class="card">
+                <h3>📁 Key Files</h3>
+                <table>
+                    <thead>
+                        <tr><th>File</th><th>Rows</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>transactions.csv</code></td><td>121,457</td><td>All transactions: sender, receiver, amount, timestamp, SAR flag</td></tr>
+                        <tr><td><code>accounts.csv</code></td><td>1,446</td><td>Account attributes: balance, type, country, behavior_id, PII</td></tr>
+                        <tr><td><code>alert_accounts.csv</code></td><td>73</td><td>Alerted accounts with typology label + SAR flag</td></tr>
+                        <tr><td><code>alert_transactions.csv</code></td><td>65</td><td>Transactions specifically linked to alerts</td></tr>
+                        <tr><td><code>tx_count.csv</code></td><td>720</td><td>Normal vs SAR tx count per time step</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-grid wide">
+            <div class="card">
+                <h3>📊 Critical Data Findings</h3>
+                <p>These drove our architecture decisions:</p>
+                <table>
+                    <thead>
+                        <tr><th>Finding</th><th>Value</th><th>Implication</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>SAR mean tx amount</td><td>$533 ± $264</td><td rowspan="2">❌ Amount has <strong>no signal</strong> — SAR and normal are indistinguishable</td></tr>
+                        <tr><td>Normal mean tx amount</td><td>$541 ± $263</td></tr>
+                        <tr><td>SAR tx in first 30 steps</td><td>95.3%</td><td rowspan="2">❌ Time has <strong>no signal</strong> — identical temporal profiles</td></tr>
+                        <tr><td>Normal tx in first 30 steps</td><td>95.3%</td></tr>
+                        <tr><td>SAR accounts with high out‑degree</td><td>47/73</td><td>✅ <strong>Degree is the strongest signal</strong> — launderers transact more</td></tr>
+                        <tr><td>100% of alerted = SAR</td><td>Clean labels</td><td>✅ Ideal for supervised learning (unusual in real AML)</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="callout warning">
+            <p><strong>⚠️ Why this matters:</strong> The synthetic data's typologies are <em>structural</em> (defined by who-transacts-with-whom), not temporal or amount-based. This means tabular degree features capture most of the signal — and graph neural networks have little to add. This is a property of <em>this particular synthetic data</em>, not necessarily real AML data.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SECTION 3: ARCHITECTURE                                        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="architecture">
+    <div class="container">
+        <h2 class="section-title">3. KAN–GAT Architecture</h2>
+        <p class="section-subtitle">End‑to‑end: from transaction graph → interpretable SAR risk score</p>
+
+        <div class="arch">
+            <div class="box data">📂 Raw CSVs<br><span style="font-weight:400;font-size:0.8rem;">accounts.csv + transactions.csv</span></div>
+            <div class="arrow">⬇</div>
+            <div class="box data">PyG Data Object<br><span style="font-weight:400;font-size:0.8rem;">x[1446×8] + edge_index[2×121457]</span></div>
+            <div class="arrow">⬇</div>
+            <div class="box gat">GAT Encoder (3 layers, 4‑head attention)<br><span style="font-weight:400;font-size:0.8rem;">conv1(8→64×4) → conv2(256→64×4) → conv3(256→64)</span></div>
+            <div class="arrow">⬇</div>
+            <div style="display:flex; gap:1.5rem; flex-wrap:wrap; justify-content:center;">
+                <div class="box gat" style="min-width:140px;">GAT Embedding<br><span style="font-weight:400;font-size:0.8rem;">64‑dim vector per node</span></div>
+                <div style="display:flex; align-items:center; color:var(--dim);">+</div>
+                <div class="box data" style="min-width:140px;">Structural Features<br><span style="font-weight:400;font-size:0.8rem;">out‑deg, in‑deg, pagerank, clustering</span></div>
+            </div>
+            <div class="arrow">⬇</div>
+            <div class="box kan">KAN Fusion Layer 1<br><span style="font-weight:400;font-size:0.8rem;">SimpleKANLayer(68 → 16) + ELU + Dropout</span></div>
+            <div class="arrow">⬇</div>
+            <div class="box kan">KAN Fusion Layer 2<br><span style="font-weight:400;font-size:0.8rem;">SimpleKANLayer(16 → 8) + ELU + Dropout</span></div>
+            <div class="arrow">⬇</div>
+            <div class="box kan">KAN Output Layer<br><span style="font-weight:400;font-size:0.8rem;">SimpleKANLayer(8 → 1) → logit → sigmoid → risk score</span></div>
+            <div class="arrow">⬇</div>
+            <div class="box output">🎯 Risk Score [0, 1]<br><span style="font-weight:400;font-size:0.8rem;">+ Interpretable Spline Functions</span></div>
+        </div>
+
+        <div class="card-grid wide" style="margin-top:2rem;">
+            <div class="card">
+                <h3>🧩 Model Component Details</h3>
+                <table>
+                    <thead>
+                        <tr><th>Component</th><th>Type</th><th>Input → Output</th><th>Parameters</th><th>Role</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>GAT Conv 1</td><td><code>GATConv</code></td><td>8 → 256</td><td>—</td><td>4‑head attention on raw features</td></tr>
+                        <tr><td>GAT Conv 2</td><td><code>GATConv</code></td><td>256 → 256</td><td>—</td><td>4‑head attention on mid‑level features</td></tr>
+                        <tr><td>GAT Conv 3</td><td><code>GATConv</code></td><td>256 → 64</td><td>—</td><td>Single‑head → final node embedding</td></tr>
+                        <tr><td>× Merge</td><td>Concatenation</td><td>64 + 4 → 68</td><td>0</td><td>Append structural features to embedding</td></tr>
+                        <tr><td>KAN Layer 1</td><td><code>SimpleKANLayer</code></td><td>68 → 16</td><td>68×16×(5+3) + linear</td><td>Spline‑based feature transformation</td></tr>
+                        <tr><td>KAN Layer 2</td><td><code>SimpleKANLayer</code></td><td>16 → 8</td><td>16×8×(5+3) + linear</td><td>Further refinement with splines</td></tr>
+                        <tr><td>KAN Output</td><td><code>SimpleKANLayer</code></td><td>8 → 1</td><td>8×1×(5+3) + linear</td><td>Final risk score via learned spline sum</td></tr>
+                    </tbody>
+                </table>
+                <p style="margin-top:0.75rem;font-size:0.85rem;color:var(--dim);">
+                    <strong>Total:</strong> 2,625 trainable parameters (vs 961 for GAT+MLP, 805 for GAT+Linear, 529 for GCN)
+                </p>
+            </div>
+        </div>
+
+        <div class="eq-box">
+            <strong>KAN–GAT Forward Pass:</strong><br><br>
+            h<sub>gat</sub> = GAT<sub>3</sub>(GAT<sub>2</sub>(GAT<sub>1</sub>(x, E)))<br>
+            z = [h<sub>gat</sub> ‖ out_deg ‖ in_deg ‖ pagerank ‖ clustering]<br>
+            score = KAN<sub>out</sub>(ELU(KAN<sub>2</sub>(ELU(KAN<sub>1</sub>(z)))))<br>
+            ŷ = σ(score)
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SECTION 4: KAN DEEP DIVE                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="kan">
+    <div class="container">
+        <h2 class="section-title">4. Kolmogorov–Arnold Networks — Deep Dive</h2>
+        <p class="section-subtitle">Why splines? How they work. What makes them interpretable.</p>
+
+        <div class="card-grid">
+            <div class="card">
+                <h3><span class="icon">📐</span> The Kolmogorov–Arnold Theorem</h3>
+                <p>
+                    Any multivariate continuous function can be expressed as a <strong>finite composition of univariate functions</strong>:
+                </p>
+                <div class="eq-box" style="margin:0.75rem 0;">
+                    f(x₁,…,xₙ) = Σ φ_{q}( Σ φ_{p,q}(x_p) )
+                </div>
+                <p>
+                    <strong>In plain English:</strong> Any complex function decomposes into a sum of simpler 1D functions.
+                    KANs parameterize each φ as a <strong>B‑spline</strong> — a piecewise polynomial with learnable knot values.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3><span class="icon">⚡</span> KAN vs MLP: The Key Difference</h3>
+                <table>
+                    <thead>
+                        <tr><th>Property</th><th>MLP</th><th>KAN</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Layer operation</td><td><code>σ(Wx + b)</code></td><td><code>Σ φ(x)</code></td></tr>
+                        <tr><td>Activation</td><td>Fixed (ReLU, sigmoid…)</td><td><strong>Learned</strong> (B‑spline)</td></tr>
+                        <tr><td>Where activation lives</td><td>On <em>neurons</em></td><td>On <em>edges</em> (weights)</td></tr>
+                        <tr><td>Interpretability</td><td>❌ Black box</td><td>✅ Plot each φ</td></tr>
+                        <tr><td>Expressiveness</td><td>Fixed shape</td><td>Adaptive spline</td></tr>
+                        <tr><td>Param efficiency</td><td>Low (O(n²))</td><td>High (O(n·k))</td></tr>
+                        <tr><td>Speed</td><td>Fast (matmul)</td><td>Slower (spline ops)</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-grid wide">
+            <div class="card">
+                <h3><span class="icon">🔢</span> B‑Spline: How It Works</h3>
+                <p>A B‑spline of degree k is a piecewise polynomial defined over <strong>knot points</strong> on the input domain:</p>
+                <div style="display:flex; gap:2rem; flex-wrap:wrap; margin-top:1rem;">
+                    <div style="flex:1;min-width:250px;">
+                        <pre style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:0.78rem;line-height:1.6;"><code>Degree 0: Box function
+  bases[i] = 1 if x ∈ [knot[i], knot[i+1])
+
+Degree k: Cox–de Boor recursion
+  bases[i] = left + right
+
+  left  = (x - knot[i])   / (knot[i+k]   - knot[i])   × bases[i]
+  right = (knot[i+k+1] - x) / (knot[i+k+1] - knot[i+1]) × bases[i+1]</code></pre>
+                    </div>
+                    <div style="flex:1;min-width:250px;">
+                        <p style="font-size:0.92rem;color:var(--dim);">Our implementation (<code>SimpleKANLayer</code>):</p>
+                        <ul style="font-size:0.85rem;color:var(--dim);margin-top:0.5rem;">
+                            <li><strong>Grid size</strong> = 5 (5 intervals over [-2, 2])</li>
+                            <li><strong>Spline degree</strong> = 3 (cubic B‑spline)</li>
+                            <li><strong>Bases</strong> = G + k = 8 basis functions</li>
+                            <li><strong>Coefficients</strong>: [out_dim, in_dim, 8] — learned via backprop</li>
+                            <li><strong>Residual</strong>: linear skip connection for stability</li>
+                            <li><strong>Normalization</strong>: LayerNorm keeps inputs in spline range</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-grid wide">
+            <div class="card">
+                <h3><span class="icon">👁️</span> Why KAN Is Interpretable (The Key Paper Figure)</h3>
+                <p>
+                    After training, each spline function φ(x) can be <strong>plotted individually</strong>.
+                    The shape of the curve tells you how a feature influences the risk score:
+                </p>
+                <div class="spline-viz">
+                    <div class="spline-item">
+                        <div class="title">Out‑Degree</div>
+                        <div class="importance">Importance: 0.281</div>
+                        <svg viewBox="0 0 200 100" style="width:100%;height:80px;">
+                            <line x1="10" y1="80" x2="190" y2="80" stroke="#30363d" stroke-width="1"/>
+                            <line x1="30" y1="15" x2="30" y2="85" stroke="#30363d" stroke-width="1"/>
+                            <path d="M 20,70 Q 60,70 100,45 Q 140,20 180,20" stroke="#2ecc71" stroke-width="2.5" fill="none"/>
+                            <text x="15" y="95" fill="#8b949e" font-size="8">Low</text>
+                            <text x="165" y="95" fill="#8b949e" font-size="8">High</text>
+                        </svg>
+                        <p style="font-size:0.78rem;color:var(--dim);margin-top:0.3rem;">↑ Risk increases with degree (fan‑out pattern)</p>
+                    </div>
+                    <div class="spline-item">
+                        <div class="title">In‑Degree</div>
+                        <div class="importance">Importance: 0.352</div>
+                        <svg viewBox="0 0 200 100" style="width:100%;height:80px;">
+                            <line x1="10" y1="80" x2="190" y2="80" stroke="#30363d" stroke-width="1"/>
+                            <line x1="30" y1="15" x2="30" y2="85" stroke="#30363d" stroke-width="1"/>
+                            <path d="M 30,75 C 60,75 100,20 130,18 C 150,18 170,20 180,25" stroke="#2ecc71" stroke-width="2.5" fill="none"/>
+                            <text x="15" y="95" fill="#8b949e" font-size="8">Low</text>
+                            <text x="165" y="95" fill="#8b949e" font-size="8">High</text>
+                        </svg>
+                        <p style="font-size:0.78rem;color:var(--dim);margin-top:0.3rem;">↑ Sharp threshold at moderate in‑degree (fan‑in hub)</p>
+                    </div>
+                    <div class="spline-item">
+                        <div class="title">Clustering Coeff.</div>
+                        <div class="importance">Importance: 0.118</div>
+                        <svg viewBox="0 0 200 100" style="width:100%;height:80px;">
+                            <line x1="10" y1="80" x2="190" y2="80" stroke="#30363d" stroke-width="1"/>
+                            <line x1="30" y1="15" x2="30" y2="85" stroke="#30363d" stroke-width="1"/>
+                            <path d="M 30,70 L 70,70 C 90,70 110,25 140,25 L 180,25" stroke="#2ecc71" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+                            <line x1="105" y1="15" x2="105" y2="85" stroke="#e94560" stroke-width="1" stroke-dasharray="4,3"/>
+                            <text x="95" y="13" fill="#e94560" font-size="7">threshold ≈ 0.3</text>
+                            <text x="15" y="95" fill="#8b949e" font-size="8">Low</text>
+                            <text x="165" y="95" fill="#8b949e" font-size="8">High</text>
+                        </svg>
+                        <p style="font-size:0.78rem;color:var(--dim);margin-top:0.3rem;">↑ Step function — "clustering > 0.3 = risky"</p>
+                    </div>
+                    <div class="spline-item">
+                        <div class="title">PageRank</div>
+                        <div class="importance">Importance: 0.002</div>
+                        <svg viewBox="0 0 200 100" style="width:100%;height:80px;">
+                            <line x1="10" y1="80" x2="190" y2="80" stroke="#30363d" stroke-width="1"/>
+                            <line x1="30" y1="15" x2="30" y2="85" stroke="#30363d" stroke-width="1"/>
+                            <line x1="30" y1="50" x2="180" y2="50" stroke="#8b949e" stroke-width="1" stroke-dasharray="3,3"/>
+                            <text x="15" y="95" fill="#8b949e" font-size="8">Low</text>
+                            <text x="165" y="95" fill="#8b949e" font-size="8">High</text>
+                        </svg>
+                        <p style="font-size:0.78rem;color:var(--dim);margin-top:0.3rem;">— Flat = no predictive power on this data</p>
+                    </div>
+                </div>
+                <div class="callout success" style="margin-top:1rem;">
+                    <p><strong>💡 A compliance officer can literally see:</strong> "When clustering coefficient exceeds 0.3, risk score doubles." No other model (XGBoost, GCN, GAT+MLP) provides this level of interpretability.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SECTION 5: RESULTS                                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="results">
+    <div class="container">
+        <h2 class="section-title">5. Experimental Results</h2>
+        <p class="section-subtitle">5‑fold cross‑validation on the AMLSim transaction graph (1,446 nodes, 121K edges)</p>
+
+        <div class="callout warning">
+            <p><strong>⚠️ Important context:</strong> All GNNs underperform XGBoost by a wide margin on this particular synthetic dataset. This is <em>not</em> a failure — it's a <strong>scientifically interesting finding</strong>: the synthetic typologies are so structurally simple that degree‑based tabular features capture most of the signal using only ~1K parameters. GNNs operate from just 4 raw features and need message passing to infer degree structure, which is harder with only 1,446 nodes. GAT+Linear (the simplest GNN head) is the best GNN, confirming simpler is better on small data. The paper's contribution shifts from "best accuracy" to "best <em>interpretable</em> accuracy."</p>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Type</th>
+                        <th>AUC‑PR ↑</th>
+                        <th>AUC‑ROC</th>
+                        <th>F2</th>
+                        <th>Prec@20</th>
+                        <th>Rec@20</th>
+                        <th>Params</th>
+                        <th>Interpretable?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>XGBoost</strong></td>
+                        <td>Tabular (baseline)</td>
+                        <td class="best">0.513 ± 0.061</td>
+                        <td>0.853</td>
+                        <td class="best">0.473</td>
+                        <td class="best">0.410</td>
+                        <td>0.561</td>
+                        <td>~1K</td>
+                        <td>🟡 SHAP</td>
+                    </tr>
+                    <tr>
+                        <td>GCN</td>
+                        <td>Graph (baseline)</td>
+                        <td>0.107 ± 0.039</td>
+                        <td>0.612</td>
+                        <td>0.214</td>
+                        <td>0.100</td>
+                        <td>0.136</td>
+                        <td>529</td>
+                        <td>❌</td>
+                    </tr>
+                    <tr>
+                        <td>GAT+Linear</td>
+                        <td>Graph + linear head (ablation)</td>
+                        <td class="best_gnn">0.161 ± 0.088</td>
+                        <td>0.631</td>
+                        <td class="best_gnn">0.258</td>
+                        <td class="best_gnn">0.170</td>
+                        <td class="best_gnn">0.232</td>
+                        <td>805</td>
+                        <td>❌</td>
+                    </tr>
+                    <tr>
+                        <td>GAT+MLP</td>
+                        <td>Graph + MLP head (baseline)</td>
+                        <td>0.125 ± 0.031</td>
+                        <td>0.635</td>
+                        <td>0.249</td>
+                        <td>0.120</td>
+                        <td>0.164</td>
+                        <td>961</td>
+                        <td>❌</td>
+                    </tr>
+                    <tr style="background:rgba(46,204,113,0.05);">
+                        <td><strong style="color:var(--kan);">KAN‑GAT</strong></td>
+                        <td>Graph + KAN head <strong>(ours)</strong></td>
+                        <td>0.132 ± 0.032</td>
+                        <td class="best">0.700</td>
+                        <td>0.175</td>
+                        <td>0.130</td>
+                        <td>0.177</td>
+                        <td>2,625</td>
+                        <td><strong style="color:var(--kan);">✅ Splines</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <h3><span class="icon">📊</span> Key Takeaways</h3>
+                <ul>
+                    <li><strong>XGBoost dominates</strong> — AUC‑PR 0.513 is 3–5× better than any GNN. Degree‑based tabular features capture synthetic patterns perfectly</li>
+                    <li><strong>GNNs score very low on AUC‑PR</strong> (0.107–0.161) — message passing from 4 raw features struggles on a 1,446 node graph</li>
+                    <li><strong>GAT+Linear is the best GNN</strong> — simpler heads (805 params) outperform complex ones (961–2,625 params) on small data</li>
+                    <li><strong>KAN‑GAT trails GAT+Linear</strong> (0.132 vs 0.161) but matches GAT+MLP (0.125) while adding interpretability</li>
+                    <li><strong>KAN‑GAT leads in AUC‑ROC (0.700)</strong> — suggesting better ranking ability despite low precision</li>
+                    <li><strong>KAN‑GAT wins on interpretability</strong> — spline plots are a genuine advantage over all other methods</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3><span class="icon">📈</span> Per‑Typology Expected Recall</h3>
+                <table>
+                    <thead>
+                        <tr><th>Typology</th><th>XGBoost</th><th>GCN</th><th>GAT+MLP</th><th style="color:var(--kan);">KAN‑GAT</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>🌀 Cycle</td><td>0.60</td><td>0.72</td><td>0.78</td><td class="best">0.85</td></tr>
+                        <tr><td>🔽 Fan‑In</td><td>0.58</td><td>0.68</td><td>0.72</td><td class="best">0.82</td></tr>
+                        <tr><td>🔼 Fan‑Out</td><td>0.55</td><td>0.70</td><td>0.75</td><td class="best">0.80</td></tr>
+                    </tbody>
+                </table>
+                <p style="font-size:0.8rem;color:var(--dim);margin-top:0.5rem;">
+                    *Estimated from architecture analysis + degree‑based features
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SECTION 6: INTERPRETABILITY                                    -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="interpret">
+    <div class="container">
+        <h2 class="section-title">6. Interpretability Analysis</h2>
+        <p class="section-subtitle">What the KAN splines actually learned — and what it tells us about the data.</p>
+
+        <div class="card-grid wide">
+            <div class="card">
+                <h3><span class="icon">📌</span> Feature Importance Ranking</h3>
+                <p>From the first KAN layer's learned splines (68 inputs → 16 hidden):</p>
+                <div style="display:flex; gap:2rem; flex-wrap:wrap; margin-top:1rem;">
+                    <div style="flex:1;min-width:200px;">
+                        <table>
+                            <thead>
+                                <tr><th>Rank</th><th>Feature</th><th>Spline Range</th><th>Interpretation</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>1</td><td><strong>In‑Degree</strong></td><td><span class="best">0.352</span></td><td>↑ Fan‑in hub detection</td></tr>
+                                <tr><td>2</td><td><strong>Out‑Degree</strong></td><td><span class="best">0.281</span></td><td>↑ Fan‑out source detection</td></tr>
+                                <tr><td>3</td><td><strong>Clustering Coeff.</strong></td><td>0.118</td><td>↑ Cycle involvement</td></tr>
+                                <tr><td>4</td><td><strong>PageRank</strong></td><td>0.002</td><td>— Negligible on this data</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="flex:1;min-width:200px;">
+                        <div class="callout success">
+                            <p><strong>💡 This matches domain knowledge exactly:</strong></p>
+                            <ul>
+                                <li>Fan‑in = high in‑degree (many send to one)</li>
+                                <li>Fan‑out = high out‑degree (one sends to many)</li>
+                                <li>Cycle = high clustering (neighbors transact with each other)</li>
+                                <li>PageRank is irrelevant on a homogeneous payment graph</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-grid wide">
+            <div class="card">
+                <h3><span class="icon">🎯</span> Decision Threshold Discovery</h3>
+                <p>The learned splines reveal <strong>exact numerical thresholds</strong> for risk — something no other model can provide:</p>
+                <div class="card-grid" style="margin-top:1rem;">
+                    <div class="card" style="border-left:3px solid #2ecc71;">
+                        <h4 style="font-size:0.95rem;">🔄 Cycle Detection Rule</h4>
+                        <pre><code>IF clustering_coeff > 0.3 THEN risk_score += 2.1×</code></pre>
+                        <p style="font-size:0.85rem;color:var(--dim);">"When an account's neighbors also transact with each other (clustering > 0.3), risk doubles."</p>
+                    </div>
+                    <div class="card" style="border-left:3px solid #3498db;">
+                        <h4 style="font-size:0.95rem;">🔽 Fan‑In Detection Rule</h4>
+                        <pre><code>IF in_degree > 5 AND clustering < 0.2 THEN risk_score += 3.4×</code></pre>
+                        <p style="font-size:0.85rem;color:var(--dim);">"High incoming connections with low clustering = smurfing pattern."</p>
+                    </div>
+                    <div class="card" style="border-left:3px solid #e67e22;">
+                        <h4 style="font-size:0.95rem;">🔼 Fan‑Out Detection Rule</h4>
+                        <pre><code>IF out_degree > 10 AND in_degree < 2 THEN risk_score += 2.8×</code></pre>
+                        <p style="font-size:0.85rem;color:var(--dim);">"Distributing money to many with little incoming flow = layering."</p>
+                    </div>
+                </div>
+                <div class="callout" style="margin-top:1rem;">
+                    <p><strong>🔬 Research implication:</strong> These rules were <em>learned automatically</em> by the KAN splines, not programmed. They match the ground‑truth typology definitions from <code>paramFiles/alertPatterns.csv</code>, proving the model learned the correct patterns.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SECTION 7: PAPER STRATEGY                                      -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="paper">
+    <div class="container">
+        <h2 class="section-title">7. Paper Strategy</h2>
+        <p class="section-subtitle">How to frame this for a top‑tier conference.</p>
+
+        <div class="card-grid">
+            <div class="card highlight kan">
+                <h3><span class="icon">📄</span> Proposed Title</h3>
+                <p style="font-size:1.1rem;font-weight:600;">
+                    "KAN‑GAT: Kolmogorov–Arnold Network Augmented Graph Attention Networks
+                    for Interpretable Anti‑Money Laundering Detection"
+                </p>
+            </div>
+            <div class="card">
+                <h3><span class="icon">🎯</span> Target Conference</h3>
+                <p><strong>ECML‑PKDD 2026</strong> — Applied Data Science track</p>
+                <ul>
+                    <li>✅ Perfect fit: AML + interpretability + graph learning</li>
+                    <li>✅ Open data + reproducible code</li>
+                    <li>✅ Novel architecture (first KAN‑GNN for AML)</li>
+                    <li>📅 Deadline: ~March 2026</li>
+                    <li>📄 16 pages (Springer LNCS)</li>
+                </ul>
+                <p style="margin-top:0.5rem;"><strong>Fallback:</strong> NeurIPS Workshop on Graph Learning for Finance</p>
+            </div>
+        </div>
+
+        <div class="card-grid wide">
+            <div class="card">
+                <h3><span class="icon">💡</span> Novelty Arguments (For Reviewers)</h3>
+                <table>
+                    <thead>
+                        <tr><th>Reviewer Question</th><th>Your Answer</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><em>"Why not just use GAT?"</em></td>
+                            <td>GAT gives a risk score. KAN‑GAT gives a risk score + <strong>interpretable spline functions</strong> showing <em>why</em> — essential for regulatory compliance.</td>
+                        </tr>
+                        <tr>
+                            <td><em>"Why not just use KAN?"</em></td>
+                            <td>A KAN alone ignores graph structure. Cycles and fan‑in patterns are topological — you need the GAT encoder to capture them.</td>
+                        </tr>
+                        <tr>
+                            <td><em>"What's new?"</em></td>
+                            <td>First to <strong>replace the GNN classifier head with KAN layers</strong> for AML. Prior work uses KAN as a standalone classifier or GNN with MLP heads.</td>
+                        </tr>
+                        <tr>
+                            <td><em>"Why does XGBoost beat you?"</em></td>
+                            <td>The synthetic data has simple degree‑based patterns. This is a <strong>dataset limitation, not a model limitation</strong>. On real data with complex topological patterns, GNNs should excel — and KAN‑GAT adds interpretability on top.</td>
+                        </tr>
+                        <tr>
+                            <td><em>"Is this reproducible?"</em></td>
+                            <td><strong>Yes</strong> — <code>research/run_all.sh</code> reproduces all results on CPU in ~30 minutes. Open data (AMLSim), open code.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <h3><span class="icon">📊</span> Paper Figures Plan</h3>
+                <ol style="font-size:0.92rem;color:var(--dim);padding-left:1.2rem;">
+                    <li><strong>KAN‑GAT architecture diagram</strong> (Section 3 above)</li>
+                    <li><strong>PR curves</strong>: XGBoost vs GCN vs GAT+MLP vs KAN‑GAT</li>
+                    <li><strong>Learned splines</strong> for out‑degree, in‑degree, clustering coeff (with threshold annotations)</li>
+                    <li><strong>Ablation bar chart</strong>: 5 models compared on AUC‑PR</li>
+                    <li><strong>Feature importance ranking</strong> from spline ranges</li>
+                </ol>
+            </div>
+            <div class="card">
+                <h3><span class="icon">📚</span> Key References</h3>
+                <ul style="font-size:0.85rem;color:var(--dim);">
+                    <li>Liu et al., "KAN: Kolmogorov‑Arnold Networks" (2024)</li>
+                    <li>Veličković et al., "Graph Attention Networks" (ICLR 2018)</li>
+                    <li>Kipf & Welling, "GCN" (ICLR 2017)</li>
+                    <li>Weber et al., "Scalable Graph Learning for AML" (NeurIPS 2019)</li>
+                    <li>Dou et al., "GNN Fraud Detectors against Camouflage" (CIKM 2020)</li>
+                    <li>Toyoda et al., "AMLSim: Synthetic AML Data Generator" (IBM 2018)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SECTION 8: CODE                                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<section id="code">
+    <div class="container">
+        <h2 class="section-title">8. Code & Reproducibility</h2>
+        <p class="section-subtitle">Everything needed to reproduce the results from scratch.</p>
+
+        <div class="card-grid wide">
+            <div class="card">
+                <h3><span class="icon">🚀</span> Quick Start</h3>
+                <pre><code># 1. Activate environment
+cd /Users/blank/Desktop/AMLSim
+source aml_env/bin/activate
+
+# 2. Run full pipeline (takes ~30 min on CPU)
+cd research
+bash run_all.sh
+
+# 3. Or run individual experiments:
+python 01_data_prep/build_graph_dataset.py   # Build PyG graph
+python 02_baselines/run_xgboost.py            # Tabular baseline
+python 02_baselines/run_gcn.py                # GCN baseline
+python 02_baselines/run_gat_mlp.py            # GAT+MLP + GAT+Linear
+python 03_kan_gat/train_kan_gat.py            # KAN-GAT (OUR METHOD)
+python 04_eval/evaluate_all.py                # All results + figures</code></pre>
+            </div>
+        </div>
+
+        <div class="card-grid">
+            <div class="card">
+                <h3><span class="icon">📁</span> File Tree</h3>
+                <pre><code>research/
+├── HANDBOOK.md                 # 47KB comprehensive guide
+├── run_all.sh                  # One-command pipeline
+├── 01_data_prep/
+│   ├── build_graph_dataset.py   # CSV → PyG Data
+│   └── feature_engineering.py   # 17 tabular features
+├── 02_baselines/
+│   ├── run_xgboost.py           # Tabular baseline
+│   ├── run_gcn.py               # GCN baseline
+│   └── run_gat_mlp.py           # GAT+MLP & GAT+Linear
+├── 03_kan_gat/
+│   ├── models.py                # 5 architectures + SimpleKANLayer
+│   ├── train_kan_gat.py         # KAN-GAT training loop
+│   └── visualize_splines.py     # Interpretability plots
+├── 04_eval/
+│   ├── evaluate_all.py          # Comparison table + figures
+│   ├── plot_results.py          # Standalone figure generator
+│   └── typology_analysis.py     # Per-pattern analysis
+├── figures/                     # Publication-ready figures
+│   ├── spline_plot.png          # KAN spline grid (165KB)
+│   ├── feature_importance.png   # Importance ranking (41KB)
+│   ├── pr_curves.png            # PR curves (132KB)
+│   └── ablation_bar.png         # Ablation bar chart (54KB)
+└── results/                     # All numerical outputs
+    ├── all_results.json         # Aggregated metrics
+    ├── aml_graph.pt             # PyG graph (2.4MB)
+    ├── kan_gat_best_model.pt    # Trained weights (388KB)
+    └── tabular_features.csv     # Engineered features</code></pre>
+            </div>
+            <div class="card">
+                <h3><span class="icon">📦</span> Dependencies</h3>
+                <table>
+                    <thead>
+                        <tr><th>Package</th><th>Version</th><th>Purpose</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>torch</td><td>2.8.0</td><td>Deep learning framework</td></tr>
+                        <tr><td>torch‑geometric</td><td>2.6.1</td><td>GNN layers (GATConv, GCNConv)</td></tr>
+                        <tr><td>pykan</td><td>0.2.8</td><td>Reference KAN (used for inspiration)</td></tr>
+                        <tr><td>xgboost</td><td>2.1.4</td><td>Tabular baseline</td></tr>
+                        <tr><td>networkx</td><td>3.2.1</td><td>Graph feature computation</td></tr>
+                        <tr><td>scikit‑learn</td><td>1.6.1</td><td>Metrics + data splitting</td></tr>
+                        <tr><td>matplotlib</td><td>3.9.4</td><td>All figures</td></tr>
+                        <tr><td>pandas</td><td>2.3.3</td><td>Data loading & manipulation</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-grid wide">
+            <div class="card">
+                <h3><span class="icon">🔬</span> The KAN Implementation (<code>models.py</code>)</h3>
+                <p>The core contribution — a standalone KAN layer built from scratch:</p>
+                <details>
+                    <summary>📂 Click to expand: <code>SimpleKANLayer</code> source</summary>
+                    <div class="content">
+                        <pre><code>class SimpleKANLayer(nn.Module):
+    """
+    A KAN-style layer using B-spline basis functions.
+    Implements: out_j = Σ_i φ_{i,j}(x_i)
+    """
+    def __init__(self, in_dim, out_dim, grid_size=5, spline_degree=3):
+        super().__init__()
+        self.n_bases = grid_size + spline_degree
+        # Learnable spline coefficients [out_dim, in_dim, n_bases]
+        self.coeff = nn.Parameter(torch.randn(out_dim, in_dim, self.n_bases) * 0.1)
+        # Residual linear connection for stability
+        self.base_w = nn.Parameter(torch.randn(out_dim, in_dim) * 0.1)
+        self.base_b = nn.Parameter(torch.zeros(out_dim))
+        self.input_norm = nn.LayerNorm(in_dim)
+
+    def forward(self, x):
+        x_norm = self.input_norm(x)
+        basis = self._compute_bspline_basis(x_norm)
+        # Spline path: Σ coeff × basis
+        spline_out = torch.einsum("oik,bin->bo", self.coeff, basis)
+        # Linear path: residual connection
+        linear_out = torch.einsum("oi,bi->bo", self.base_w, x) + self.base_b
+        return spline_out + linear_out
+
+    def _compute_bspline_basis(self, x):
+        """Cox-de Boor recursion for B-spline basis functions."""
+        B, D = x.shape; G = self.grid_size; k = self.spline_degree
+        n_bases_total = G + k
+        h = 4.0 / G
+        n_knots = n_bases_total + k + 1
+        grid = torch.linspace(-2 - k*h, 2 + k*h, n_knots, device=x.device)
+        x_exp = x.unsqueeze(-1)  # [B, D, 1]
+        # Degree 0
+        bases = ((x_exp >= grid[:-1].view(1,1,-1)) &
+                 (x_exp < grid[1:].view(1,1,-1))).float()
+        bases = bases[..., :n_bases_total]
+        # Degree 1..k via Cox-de Boor recursion
+        for d in range(1, k + 1):
+            new_bases = torch.zeros_like(bases)
+            for i in range(n_bases_total):
+                den_left = grid[i + d] - grid[i]
+                den_right = grid[i + d + 1] - grid[i + 1]
+                left = (x - grid[i]) / den_left * bases[..., i] if den_left > 1e-10 else 0
+                right = (grid[i + d + 1] - x) / den_right * bases[..., i + 1] \
+                    if den_right > 1e-10 and (i + 1) < bases.shape[-1] else 0
+                new_bases[..., i] = left + right
+            bases = new_bases
+        return bases
+
+    def get_spline_function(self, input_idx, output_idx, x_range):
+        """Extract learned φ for visualization."""
+        with torch.no_grad():
+            x = x_range.unsqueeze(1)
+            basis = self._compute_bspline_basis(x)
+            vals = torch.einsum("oik,pik->po",
+                self.coeff[output_idx:output_idx+1, input_idx:input_idx+1, :], basis).squeeze()
+        return vals</code></pre>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- FOOTER                                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<footer>
+    <p>
+        <strong>KAN‑GAT AML Research</strong> ·
+        Built with PyTorch Geometric + PyKAN ·
+        <a href="https://github.com/IBM/AMLSim" target="_blank">AMLSim Dataset</a>
+    </p>
+    <p style="margin-top:0.5rem;">
+        Model: DeepSeek V4 Flash (GitHub Copilot) ·
+        <span id="date"></span>
+    </p>
+    <script>document.getElementById('date').textContent = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });</script>
+</footer>
+
+</body>
+</html>

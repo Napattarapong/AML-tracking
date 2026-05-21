@@ -1,0 +1,21 @@
+{
+  "model": "KAN-GAT",
+  "config": {
+    "gat_hidden_dim": 16,
+    "kan_hidden_dims": [
+      8,
+      4
+    ],
+    "grid_size": 5,
+    "spline_degree": 3,
+    "sar_weight": 20.0,
+    "learning_rate": 0.005,
+    "weight_decay": 0.0001
+  },
+  "auc_pr_mean": 0.1321917473844953,
+  "auc_pr_std": 0.03234219386000034,
+  "auc_roc_mean": 0.7002138085758522,
+  "f2_mean": 0.17492351550549298,
+  "precision_at_20_mean": 0.12999999999999998,
+  "recall_at_20_mean": 0.17714285714285713
+}

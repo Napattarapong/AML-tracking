@@ -1,0 +1,79 @@
+{
+  "model": "XGBoost",
+  "auc_pr_mean": 0.5131775730031529,
+  "auc_pr_std": 0.061244072793450184,
+  "auc_roc_mean": 0.8534458242487439,
+  "f2_mean": 0.4726970353251259,
+  "precision_at_20_mean": 0.41,
+  "recall_at_20_mean": 0.5609523809523809,
+  "feature_importance": [
+    {
+      "name": "recipient_diversity",
+      "importance": 0.20326972007751465
+    },
+    {
+      "name": "num_tx",
+      "importance": 0.10795608907938004
+    },
+    {
+      "name": "num_unique_recipients",
+      "importance": 0.08134198933839798
+    },
+    {
+      "name": "num_unique_senders",
+      "importance": 0.07228806614875793
+    },
+    {
+      "name": "total_received",
+      "importance": 0.06865064799785614
+    },
+    {
+      "name": "avg_received",
+      "importance": 0.06773623079061508
+    },
+    {
+      "name": "total_sent",
+      "importance": 0.06679494678974152
+    },
+    {
+      "name": "num_received",
+      "importance": 0.059014301747083664
+    },
+    {
+      "name": "amount_cv",
+      "importance": 0.05891323834657669
+    },
+    {
+      "name": "avg_amount",
+      "importance": 0.052305031567811966
+    },
+    {
+      "name": "max_amount",
+      "importance": 0.03951304405927658
+    },
+    {
+      "name": "min_amount",
+      "importance": 0.039260346442461014
+    },
+    {
+      "name": "std_amount",
+      "importance": 0.03458178788423538
+    },
+    {
+      "name": "tx_velocity",
+      "importance": 0.029696887359023094
+    },
+    {
+      "name": "first_step",
+      "importance": 0.018059000372886658
+    },
+    {
+      "name": "last_step",
+      "importance": 0.00061868189368397
+    },
+    {
+      "name": "active_steps",
+      "importance": 0.0
+    }
+  ]
+}

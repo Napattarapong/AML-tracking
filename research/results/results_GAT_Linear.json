@@ -1,0 +1,9 @@
+{
+  "model": "GAT+Linear",
+  "auc_pr_mean": 0.16079698487514107,
+  "auc_pr_std": 0.08834363313137589,
+  "auc_roc_mean": 0.6307233418649477,
+  "f2_mean": 0.25757053395479546,
+  "precision_at_20_mean": 0.17,
+  "recall_at_20_mean": 0.23238095238095235
+}
